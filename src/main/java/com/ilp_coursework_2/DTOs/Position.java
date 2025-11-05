@@ -1,4 +1,4 @@
-package com.ilp_coursework_1;
+package com.ilp_coursework_2.DTOs;
 
 import jakarta.validation.constraints.NotNull;
 

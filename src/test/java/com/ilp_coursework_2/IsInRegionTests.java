@@ -1,5 +1,8 @@
-package com.ilp_coursework_1;
+package com.ilp_coursework_2;
 
+import com.ilp_coursework_2.DTOs.Position;
+import com.ilp_coursework_2.DTOs.Region;
+import com.ilp_coursework_2.DTOs.Request.RegionRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;

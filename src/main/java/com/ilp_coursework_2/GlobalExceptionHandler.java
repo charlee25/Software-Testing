@@ -1,4 +1,4 @@
-package com.ilp_coursework_1;
+package com.ilp_coursework_2;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -6,6 +6,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -29,6 +30,13 @@ public class GlobalExceptionHandler {
         Map<String, String> error = new HashMap<>();
         error.put("error", "JSON not in correct format: " + ex.getMostSpecificCause().getMessage());
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, String>> handleResponseStatusException(ResponseStatusException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("error", ex.getReason());
+        return new ResponseEntity<>(error, ex.getStatusCode());
     }
 
     // Handle all other exceptions

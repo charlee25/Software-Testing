@@ -1,5 +1,6 @@
-package com.ilp_coursework_1;
+package com.ilp_coursework_2.DTOs;
 
+import com.ilp_coursework_2.DTOs.Position;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 

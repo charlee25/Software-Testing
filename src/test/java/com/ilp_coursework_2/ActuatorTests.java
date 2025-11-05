@@ -1,4 +1,4 @@
-package com.ilp_coursework_1;
+package com.ilp_coursework_2;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -7,9 +7,10 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class UIDTests {
+class ActuatorTests {
 
     @LocalServerPort
     private int port;
@@ -17,13 +18,13 @@ class UIDTests {
     private final TestRestTemplate restTemplate = new TestRestTemplate();
 
     @Test
-    void uid_output() {
-        var response = restTemplate.getForEntity("http://localhost:" + port + "/api/v1/uid", String.class);
-        assertEquals("s2479712", response.getBody());
+    void actuator_output() {
+        var response = restTemplate.getForEntity("http://localhost:" + port + "/actuator/health", String.class);
+        assertTrue(response.getBody().contains("UP"));
     }
     @Test
-    void uid_code() {
-        var response = restTemplate.getForEntity("http://localhost:" + port + "/api/v1/uid", String.class);
+    void actuator_code() {
+        var response = restTemplate.getForEntity("http://localhost:" + port + "/actuator/health", String.class);
         assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 

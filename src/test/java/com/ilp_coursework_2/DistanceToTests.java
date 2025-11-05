@@ -1,5 +1,7 @@
-package com.ilp_coursework_1;
+package com.ilp_coursework_2;
 
+import com.ilp_coursework_2.DTOs.Request.DistanceRequest;
+import com.ilp_coursework_2.DTOs.Position;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -16,7 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
-class IsCloseToTests {
+class DistanceToTests {
     @Autowired
     private MockMvc mockMvc;
     @LocalServerPort
@@ -25,74 +27,74 @@ class IsCloseToTests {
     private final TestRestTemplate restTemplate = new TestRestTemplate();
 
     @Test
-    void closeTo_output_correct() {
+    void distanceTo_output_correct() {
         DistanceRequest request = new DistanceRequest();
         request.setPosition1(new Position(55.946233,  -3.192473));
         request.setPosition2(new Position(55.942617,  -3.192473));
-        var response = restTemplate.postForEntity("http://localhost:" + port + "/api/v1/isCloseTo",
+        var response = restTemplate.postForEntity("http://localhost:" + port + "/api/v1/distanceTo",
                 request,
-                Boolean.class);
-        assertEquals(false, response.getBody());
+                String.class);
+        assertEquals("0.003616", response.getBody());
     }
     @Test
-    void closeTo_code_correct() {
+    void distanceTo_code_correct() {
         DistanceRequest request = new DistanceRequest();
         request.setPosition1(new Position(55.946233,  -3.192473));
         request.setPosition2(new Position(55.942617,  -3.192473));
-        var response = restTemplate.postForEntity("http://localhost:" + port + "/api/v1/isCloseTo",
+        var response = restTemplate.postForEntity("http://localhost:" + port + "/api/v1/distanceTo",
                 request,
                 String.class);
         assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 
     @Test
-    void closeTo_code_missingPosition1() {
+    void distanceTo_code_missingPosition1() {
         DistanceRequest request = new DistanceRequest();
         request.setPosition2(new Position(55.942617,  -3.192473));
-        var response = restTemplate.postForEntity("http://localhost:" + port + "/api/v1/isCloseTo",
+        var response = restTemplate.postForEntity("http://localhost:" + port + "/api/v1/distanceTo",
                 request,
                 String.class);
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }
     @Test
-    void closeTo_code_missingPosition2() {
+    void distanceTo_code_missingPosition2() {
         DistanceRequest request = new DistanceRequest();
         request.setPosition1(new Position(55.942617,  -3.192473));
-        var response = restTemplate.postForEntity("http://localhost:" + port + "/api/v1/isCloseTo",
+        var response = restTemplate.postForEntity("http://localhost:" + port + "/api/v1/distanceTo",
                 request,
                 String.class);
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }
     @Test
-    void closeTo_code_nullLat() {
+    void distanceTo_code_nullLat() {
         DistanceRequest request = new DistanceRequest();
         request.setPosition1(new Position(null,  -3.192473));
         request.setPosition2(new Position(55.942617,  -3.192473));
-        var response = restTemplate.postForEntity("http://localhost:" + port + "/api/v1/isCloseTo",
+        var response = restTemplate.postForEntity("http://localhost:" + port + "/api/v1/distanceTo",
                 request,
                 String.class);
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }
     @Test
-    void closeTo_code_nullLng() {
+    void distanceTo_code_nullLng() {
         DistanceRequest request = new DistanceRequest();
         request.setPosition1(new Position(55.946233,  null));
         request.setPosition2(new Position(55.942617,  -3.192473));
-        var response = restTemplate.postForEntity("http://localhost:" + port + "/api/v1/isCloseTo",
+        var response = restTemplate.postForEntity("http://localhost:" + port + "/api/v1/distanceTo",
                 request,
                 String.class);
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }
     @Test
-    void closeTo_code_nullRequest() {
+    void distanceTo_code_nullRequest() {
         DistanceRequest request = new DistanceRequest();
-        var response = restTemplate.postForEntity("http://localhost:" + port + "/api/v1/isCloseTo",
+        var response = restTemplate.postForEntity("http://localhost:" + port + "/api/v1/distanceTo",
                 request,
                 String.class);
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }
     @Test
-    void closeTo_output_correctSyntax() throws Exception {
+    void distanceTo_output_correctSyntax() throws Exception {
         String requestBody = """
                 {
                     "position1": {
@@ -106,13 +108,13 @@ class IsCloseToTests {
                 }
                 
                 """;
-        mockMvc.perform(post("/api/v1/isCloseTo")
+        mockMvc.perform(post("/api/v1/distanceTo")
                         .contentType("application/json")
                         .content(requestBody))
-                .andExpect(content().string("false"));
+                        .andExpect(content().string("0.003616")); // Approximate distance in km
     }
     @Test
-    void closeTo_code_correctSyntax() throws Exception {
+    void distanceTo_code_correctSyntax() throws Exception {
         String requestBody = """
                 {
                     "position1": {
@@ -126,13 +128,13 @@ class IsCloseToTests {
                 }
                 
                 """;
-        mockMvc.perform(post("/api/v1/isCloseTo")
+        mockMvc.perform(post("/api/v1/distanceTo")
                         .contentType("application/json")
                         .content(requestBody))
                 .andExpect(status().isOk());
     }
     @Test
-    void closeTo_code_incorrectSyntax() throws Exception {
+    void distanceTo_code_incorrectSyntax() throws Exception {
         String requestBody = """
                 {
                     "position1": {
@@ -146,7 +148,7 @@ class IsCloseToTests {
                 
                 
                 """;
-        mockMvc.perform(post("/api/v1/isCloseTo")
+        mockMvc.perform(post("/api/v1/distanceTo")
                         .contentType("application/json")
                         .content(requestBody))
                 .andExpect(status().isBadRequest());
