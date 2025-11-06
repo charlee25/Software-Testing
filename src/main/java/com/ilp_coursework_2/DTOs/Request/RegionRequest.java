@@ -9,7 +9,6 @@ public class RegionRequest {
     @Valid
     @NotNull(message = "position not found")
     private Position position;
-
     @Valid
     @NotNull(message = "region not found")
     private Region region;

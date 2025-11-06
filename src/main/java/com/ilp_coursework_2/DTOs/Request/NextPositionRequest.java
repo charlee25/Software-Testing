@@ -20,9 +20,7 @@ public class NextPositionRequest {
     public void setStart(Position start) {
         this.start = start;
     }
-    public Double getAngle() {
-        return angle;
-    }
+    public Double getAngle() {return angle;}
     public void setAngle(Double angle) {
         this.angle = angle;
     }

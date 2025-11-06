@@ -14,9 +14,7 @@ public class DistanceRequest {
     private Position position2;
 
     // Getters and Setters
-    public Position getPosition1() {
-        return position1;
-    }
+    public Position getPosition1() {return position1;}
     public void setPosition1(Position position1) {
         this.position1 = position1;
     }
