@@ -2,9 +2,10 @@ package com.ilp_coursework_2;
 
 import com.ilp_coursework_2.DTOs.Availability.DroneAvailability;
 import com.ilp_coursework_2.DTOs.Availability.ServicePoint;
-import com.ilp_coursework_2.DTOs.Request.AvailabilityRequest;
+import com.ilp_coursework_2.DTOs.Request.AttributeRequest;
+import com.ilp_coursework_2.DTOs.Availability.MedDispatchRecord;
 import com.ilp_coursework_2.DTOs.Requirements;
-import com.ilp_coursework_2.DTOs.Response.DronesWithCoolingResponse;
+import com.ilp_coursework_2.DTOs.Attribute;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -19,17 +20,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+
 @Service
 public class DroneService {
 
-    private static final String ILP_ENDPOINT = "https://ilp-rest-2025-bvh6e9hschfagrgy.ukwest-01.azurewebsites.net";
-
+    //private static final String ILP_ENDPOINT = "https://ilp-rest-2025-bvh6e9hschfagrgy.ukwest-01.azurewebsites.net";
+    private final RestTemplate restTemplate;
+    private final String ilpEndpoint;
     @Autowired
-    private RestTemplate restTemplate;
+    public DroneService(RestTemplate restTemplate, String ilpEndpoint) {
+        this.restTemplate = restTemplate;
+        this.ilpEndpoint = ilpEndpoint;
+    }
 
-    public List<Integer> getDronesWithCooling(boolean state) {
+    public List<String> getDronesWithCooling(boolean state) {
         // Fetch raw JSON as List of Maps
-        String URL = ILP_ENDPOINT + "/drones";
+        String URL = ilpEndpoint + "/drones";
         List<Map<String, Object>> drones = restTemplate.getForObject(URL, List.class);
 
         // Filter by cooling capability and return IDs
@@ -38,30 +44,23 @@ public class DroneService {
                     Map<String, Object> capability = (Map<String, Object>) d.get("capability");
                     return capability != null && Boolean.TRUE.equals(capability.get("cooling")) == state;
                 })
-                .map(d -> (Integer) d.get("id"))
+                .map(d -> (String) d.get("id"))
                 .collect(Collectors.toList());
     }
-    public Map<String, Object> getDroneFromID(Integer ID) {
-        String URL = ILP_ENDPOINT + "/drones";
+    public Map<String, Object> getDroneFromID(String ID) {
+        String URL = ilpEndpoint + "/drones";
         List<Map<String, Object>> drones = restTemplate.getForObject(URL, List.class);
 
         return drones.stream()
                 .filter(d -> {
-                    Object idObj = d.get("id");
-                    if (idObj instanceof Integer) {
-                        return ID.equals((Integer) idObj);
-                    } else if (idObj instanceof Number) { // sometimes JSON maps numbers to Long
-                        return ID.equals(((Number) idObj).intValue());
-                    } else {
-                        return false;
-                    }
+                    Object idObj = (String) d.get("id");
+                    return ID.equals(idObj);
                 })
                 .findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Drone not found"));
     }
-
-    public List<Integer> getAvailableDronesCapability(AvailabilityRequest request) {
-        String URL = ILP_ENDPOINT + "/drones";
+    public List<String> getAvailableDronesCapability(MedDispatchRecord request) {
+        String URL = ilpEndpoint + "/drones";
         List<Map<String, Object>> drones = restTemplate.getForObject(URL, List.class);
 
         return drones.stream()
@@ -90,35 +89,72 @@ public class DroneService {
 
                     return capacityMatches && heatingMatches && coolingMatches && costMatches;
                 })
-                .map(d -> (Integer) d.get("id"))
+                .map(d -> (String) d.get("id"))
                 .collect(Collectors.toList());
     }
-    public List<Integer> getAvailableDronesDateTime(AvailabilityRequest request) {
-        int servicePointId = request.getId();
+    public List<String> getAvailableDronesDateTime(MedDispatchRecord request) {
 
-        String url = ILP_ENDPOINT + "/drones-for-service-points";
+        String url = ilpEndpoint + "/drones-for-service-points";
         ServicePoint[] servicePoints = restTemplate.getForObject(url, ServicePoint[].class);
 
-        // Find the requested service point
-        ServicePoint sp = Arrays.stream(servicePoints)
-                .filter(p -> p.getServicePointId() == servicePointId)
-                .findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Service point not found"));
-
-        // Return list of IDs for available drones
-        return sp.getDrones().stream()
+        // Collect all drones from all service points and filter by availability
+        return Arrays.stream(servicePoints)
+                .flatMap(sp -> sp.getDrones().stream()) //
                 .filter(this::isDroneAvailableNow)
-                .map(d -> Integer.parseInt(d.getId())) // convert String ID → Integer
+                .map(DroneAvailability::getId)
+                .distinct()
                 .collect(Collectors.toList());
     }
-    public List<Integer> getAvailableDronesCombined(AvailabilityRequest request) {
-        List<Integer> capabilityDrones = getAvailableDronesCapability(request);
-        List<Integer> dateTimeDrones = getAvailableDronesDateTime(request);
+
+    public List<String> getAvailableDronesCombined(MedDispatchRecord request) {
+        List<String> capabilityDrones = getAvailableDronesCapability(request);
+        List<String> dateTimeDrones = getAvailableDronesDateTime(request);
 
         // Keep only IDs that are in both lists
         capabilityDrones.retainAll(dateTimeDrones);
 
         return capabilityDrones;
+    }
+    public List<String> getDroneFromPath(Attribute request) {
+        String url = ilpEndpoint + "/drones";
+        List<Map<String, Object>> drones = restTemplate.getForObject(url, List.class);
+        String attributeName = request.getAttribute();
+        String attributeOperator= request.getOperator();
+        String attributeValue = request.getValue();
+
+        return drones.stream()
+                .filter(drone -> {
+                    return checkMatches(drone,attributeName,attributeValue,attributeOperator);
+                })
+                // Map the matched drone to its ID as string
+                .map(d -> d.get("id").toString())
+                .collect(Collectors.toList());
+    }
+    public List<String> getDronesFromAttributes(AttributeRequest request){
+        String url = ilpEndpoint + "/drones";
+        List<Map<String, Object>> drones = restTemplate.getForObject(url, List.class);
+        List<Boolean> matchesList = new java.util.ArrayList<>();
+
+        return drones.stream()
+                .filter(drone -> {
+                    for (Attribute condition : request.getAttributes()) {
+                        String attributeName = condition.getAttribute();
+                        String operator = condition.getOperator();
+                        String targetValue = condition.getValue();
+
+                        matchesList.add(checkMatches(drone, attributeName, targetValue, operator));
+                    }
+                    for (Boolean match : matchesList) {
+                        if (!match) {
+                            matchesList.clear();
+                            return false;
+                        }
+                    }
+                    return true;
+                })
+        // Map the matched drone to its ID as string
+                .map(d -> d.get("id").toString())
+                .collect(Collectors.toList());
     }
 
     //Helper function for date time availability
@@ -135,5 +171,60 @@ public class DroneService {
                     (now.equals(from) || now.isAfter(from)) &&
                     (now.equals(until) || now.isBefore(until));
         });
+    }
+
+    // Helper function for attribute matching
+    private boolean matches(Object value, String target, String operator) {
+        if (value instanceof Number) {
+            try{
+                double numericTarget = Double.parseDouble(target);
+                double numericValue = ((Number) value).doubleValue();
+                return switch (operator) {
+                    case "=" -> numericValue == numericTarget;
+                    case "!=" -> numericValue != numericTarget;
+                    case "<" -> numericValue < numericTarget;
+                    case ">" -> numericValue > numericTarget;
+                    default -> false;
+                };
+            } catch (NumberFormatException e) {
+                return false;
+            }
+        } else if (value instanceof Boolean) {
+            try {
+                boolean boolTarget = Boolean.parseBoolean(target);
+                boolean boolValue = (Boolean) value;
+                return switch (operator) {
+                    case "=" -> boolValue == boolTarget;
+                    case "!=" -> boolValue != boolTarget;
+                    default -> false;
+                };
+            } catch (Exception e) {
+                return false;
+            }
+        } else if (value != null) {
+            return target.equals(value.toString());
+        }
+        return false;
+    }
+
+    private boolean checkMatches(Map<String, Object> drone, String attributeName, String targetValue, String operator) {
+        // Check top-level attribute
+        Object topLevelValue = drone.get(attributeName);
+        boolean matchFound = false;
+
+        if (topLevelValue != null) {
+            matchFound = matches(topLevelValue, targetValue, operator);
+        } else {
+            // Check capability attribute (nested map)
+            Object capabilityObj = drone.get("capability");
+            if (capabilityObj instanceof Map) {
+                Map<String, Object> capabilityMap = (Map<String, Object>) capabilityObj;
+                Object capValue = capabilityMap.get(attributeName);
+                if (capValue != null) {
+                    matchFound = matches(capValue, targetValue, operator);
+                }
+            }
+        }
+        return matchFound;
     }
 }
