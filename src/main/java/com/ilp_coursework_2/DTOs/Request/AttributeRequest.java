@@ -16,6 +16,8 @@ public class AttributeRequest {
     public AttributeRequest(List<Attribute> attributes) {
         this.attributes = attributes;
     }
+
+    //Getters and setters
     public List<Attribute> getAttributes() {return attributes;}
     public void setAttributes(List<Attribute> attributes) {this.attributes = attributes;}
 }

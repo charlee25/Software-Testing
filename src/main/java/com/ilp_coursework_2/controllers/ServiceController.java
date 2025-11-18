@@ -4,6 +4,7 @@ import com.ilp_coursework_2.*;
 import com.ilp_coursework_2.DTOs.Attribute;
 import com.ilp_coursework_2.DTOs.Request.AttributeRequest;
 import com.ilp_coursework_2.DTOs.Availability.MedDispatchRecord;
+import com.ilp_coursework_2.DTOs.Request.DeliveryPathRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,7 +25,7 @@ public class ServiceController {
         return droneService.getDroneFromID(id);
     }
     @PostMapping("/api/v1/queryAvailableDrones")
-    public List<String> availableDrones(@RequestBody MedDispatchRecord request) {
+    public List<String> availableDrones(@RequestBody List<MedDispatchRecord> request) {
         return droneService.getAvailableDronesCombined(request);
     }
     @GetMapping("/api/v1/queryAsPath/{attribute_name}/{attribute_value}")
@@ -37,4 +38,9 @@ public class ServiceController {
         AttributeRequest request = new AttributeRequest(attributes);
         return droneService.getDronesFromAttributes(request);
     }
+    /*@PostMapping("api/v1/calcDeliveryPath")
+    public List<String> calculateDeliveryPath(@RequestBody List<MedDispatchRecord> records) {
+        DeliveryPathRequest request = new DeliveryPathRequest(records);
+        return droneService.calculateDeliveryPath(request);
+    }*/
 }

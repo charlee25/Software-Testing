@@ -14,7 +14,7 @@ public class Requirements {
     public Requirements (){
 
     }
-    public Requirements(int capacity) {
+    public Requirements(double capacity) {
         this.capacity = capacity;
         this.heating = false;
         this.cooling = false;
