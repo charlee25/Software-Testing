@@ -2,14 +2,13 @@ package com.ilp_coursework_2.controllers;
 
 import com.ilp_coursework_2.*;
 import com.ilp_coursework_2.DTOs.Attribute;
+import com.ilp_coursework_2.DTOs.Drone;
 import com.ilp_coursework_2.DTOs.Request.AttributeRequest;
-import com.ilp_coursework_2.DTOs.Availability.MedDispatchRecord;
-import com.ilp_coursework_2.DTOs.Request.DeliveryPathRequest;
+import com.ilp_coursework_2.DTOs.MedDispatchRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 public class ServiceController {
@@ -21,7 +20,7 @@ public class ServiceController {
         return droneService.getDronesWithCooling(state);
     }
     @GetMapping("/api/v1/droneDetails/{id}")
-    public Map<String, Object> getDroneById(@PathVariable String id) {
+    public Drone getDroneById(@PathVariable String id) {
         return droneService.getDroneFromID(id);
     }
     @PostMapping("/api/v1/queryAvailableDrones")

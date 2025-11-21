@@ -1,0 +1,27 @@
+package com.ilp_coursework_2.DTOs;
+
+public class Capability {
+    private Boolean cooling;
+    private Boolean heating;
+    private Double capacity;
+    private Integer maxMoves;
+    private Double costPerMove;
+    private Double costInitial;
+    private Double costFinal;
+
+    // Getters and Setters
+    public Boolean getCooling() {return cooling;}
+    public void setCooling(Boolean cooling) {this.cooling = cooling;}
+    public Boolean getHeating() {return heating;}
+    public void setHeating(Boolean heating) {this.heating = heating;}
+    public Double getCapacity() {return capacity;}
+    public void setCapacity(Double capacity) {this.capacity = capacity;}
+    public Integer getMaxMoves() {return maxMoves;}
+    public void setMaxMoves(Integer maxMoves) {this.maxMoves = maxMoves;}
+    public Double getCostPerMove() {return costPerMove;}
+    public void setCostPerMove(Double costPerMove) {this.costPerMove = costPerMove;}
+    public Double getCostInitial() {return costInitial;}
+    public void setCostInitial(Double costInitial) {this.costInitial = costInitial;}
+    public Double getCostFinal() {return costFinal;}
+    public void setCostFinal(Double costFinal) {this.costFinal = costFinal;}
+}

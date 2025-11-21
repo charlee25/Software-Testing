@@ -13,6 +13,12 @@ public class DistanceRequest {
     @NotNull(message = "position2 not found")
     private Position position2;
 
+    public DistanceRequest() {}
+    public DistanceRequest(Position position1, Position position2) {
+        this.position1 = position1;
+        this.position2 = position2;
+    }
+
     // Getters and Setters
     public Position getPosition1() {return position1;}
     public void setPosition1(Position position1) {

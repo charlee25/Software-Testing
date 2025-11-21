@@ -1,25 +1,19 @@
 package com.ilp_coursework_2;
 
+import com.ilp_coursework_2.DTOs.*;
+import com.ilp_coursework_2.DTOs.Availability.AvailableWindow;
 import com.ilp_coursework_2.DTOs.Availability.DroneAvailability;
 import com.ilp_coursework_2.DTOs.Availability.ServicePoint;
 import com.ilp_coursework_2.DTOs.Request.AttributeRequest;
-import com.ilp_coursework_2.DTOs.Availability.MedDispatchRecord;
-import com.ilp_coursework_2.DTOs.Request.DeliveryPathRequest;
-import com.ilp_coursework_2.DTOs.Requirements;
-import com.ilp_coursework_2.DTOs.Attribute;
-import com.ilp_coursework_2.DTOs.Response.DeliveryPathResponse;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.ilp_coursework_2.DTOs.MedDispatchRecord;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 
@@ -27,84 +21,97 @@ import java.util.stream.Collectors;
 public class DroneService {
     private final RestTemplate restTemplate;
     private final String ilpEndpoint;
-    @Autowired
+
     public DroneService(RestTemplate restTemplate, String ilpEndpoint) {
         this.restTemplate = restTemplate;
         this.ilpEndpoint = ilpEndpoint;
     }
 
-    public List<String> getDronesWithCooling(boolean state) {
-        // Fetch raw JSON as List of Maps
+    public List<Drone> getAllDrones() {
         String URL = ilpEndpoint + "/drones";
-        List<Map<String, Object>> drones = restTemplate.getForObject(URL, List.class);
+        Drone[] drones = restTemplate.getForObject(URL, Drone[].class);
+        return Arrays.asList(drones);
+    }
+
+    public List<String> getDronesWithCooling(boolean state) {
+        List<Drone> drones = getAllDrones();
 
         // Filter by cooling capability and return IDs
         return drones.stream()
-                .filter(d -> {
-                    Map<String, Object> capability = (Map<String, Object>) d.get("capability");
-                    return capability != null && Boolean.TRUE.equals(capability.get("cooling")) == state;
-                })
-                .map(d -> (String) d.get("id"))
+                .filter(d -> d.getCapability() != null && d.getCapability().getCooling() == state)
+                .map(d -> (String) d.getId())
                 .collect(Collectors.toList());
     }
-    public Map<String, Object> getDroneFromID(String ID) {
-        String URL = ilpEndpoint + "/drones";
-        List<Map<String, Object>> drones = restTemplate.getForObject(URL, List.class);
+
+    public Drone getDroneFromID(String ID) {
+        List<Drone> drones = getAllDrones();
 
         return drones.stream()
                 .filter(d -> {
-                    Object idObj = (String) d.get("id");
-                    return ID.equals(idObj);
+                    return d.getId().equals(ID);
                 })
                 .findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Drone not found"));
     }
-    public List<String> getAvailableDronesCapability(List<MedDispatchRecord> request) {
-        String URL = ilpEndpoint + "/drones";
-        List<Map<String, Object>> drones = restTemplate.getForObject(URL, List.class);
-        List<Boolean> matchesList = new java.util.ArrayList<>();
+
+    public List<String> getAvailableDronesCapability(List<MedDispatchRecord> records) {
+        List<Drone> drones = getAllDrones();
 
         return drones.stream()
-                .filter(d -> {
-                    Map<String, Object> capability = (Map<String, Object>) d.get("capability");
+                .filter(drone -> {
+
+                    Capability capability = drone.getCapability();
+                    System.out.println(capability);
                     if (capability == null) {
                         return false;
                     }
-                    boolean droneCooling = (boolean) capability.get("cooling");
-                    boolean droneHeating = (boolean) capability.get("heating");
-                    double droneCapacity = ((Number) capability.get("capacity")).doubleValue();
 
-                    double droneCost = ((Number) capability.get("costInitial")).doubleValue()
-                            + ((Number) capability.get("costFinal")).doubleValue()
-                            + (((Number) capability.get("costPerMove")).doubleValue()
-                            * ((Number) capability.get("maxMoves")).doubleValue());
+                    double droneCapacity = capability.getCapacity();
+                    boolean droneCooling = capability.getCooling();
+                    boolean droneHeating = capability.getHeating();
+                    double droneCost = calculateMaxCost(drone);
 
-                    for(MedDispatchRecord reqRecord : request){
-                        Requirements req = reqRecord.getRequirements();
+                    // Drone is valid only if it matches ALL records
+                    return records.stream().allMatch(record -> {
+
+                        Requirements req = record.getRequirements();
 
                         boolean capacityMatches = droneCapacity >= req.getCapacity();
-
                         boolean heatingMatches = !req.getHeating() || droneHeating;
                         boolean coolingMatches = !req.getCooling() || droneCooling;
+                        boolean costMatches = req.getMaxCost() != null || droneCost <= req.getMaxCost();
 
-                        boolean costMatches = req.getMaxCost() == 0 || droneCost <= req.getMaxCost();
-
-                        matchesList.add(capacityMatches && heatingMatches && coolingMatches && costMatches);
-                    }
-                    return checkForInvalid(matchesList);
+                        System.out.printf("Drone %s - Capacity: %b, Heating: %b, Cooling: %b, Cost: %b%n",
+                                drone.getId(),
+                                capacityMatches,
+                                heatingMatches,
+                                coolingMatches,
+                                costMatches
+                        );
+                        return capacityMatches && heatingMatches && coolingMatches && costMatches;
+                    });
                 })
-                .map(d -> (String) d.get("id"))
+                .map(Drone::getId)
                 .collect(Collectors.toList());
     }
-    public List<String> getAvailableDronesDateTime() {
 
+    public List<String> getAvailableDronesDateTime(List<MedDispatchRecord> records) {
+        // Load all drones from all service points
         String url = ilpEndpoint + "/drones-for-service-points";
         ServicePoint[] servicePoints = restTemplate.getForObject(url, ServicePoint[].class);
 
-        // Collect all drones from all service points and filter by availability
-        return Arrays.stream(servicePoints)
-                .flatMap(sp -> sp.getDrones().stream()) //
-                .filter(this::isDroneAvailableNow)
+        // Flatten all drones across all service points
+        List<DroneAvailability> allDrones =
+                Arrays.stream(servicePoints)
+                        .flatMap(sp -> sp.getDrones().stream())
+                        .toList();
+
+        // Keep drones that can handle *all* deliveries
+        return allDrones.stream()
+                .filter(drone ->
+                        records.stream()
+                                .allMatch(record -> isDroneAvailable(drone, record))
+                )
                 .map(DroneAvailability::getId)
                 .distinct()
                 .collect(Collectors.toList());
@@ -112,32 +119,32 @@ public class DroneService {
 
     public List<String> getAvailableDronesCombined(List<MedDispatchRecord> request) {
         List<String> capabilityDrones = getAvailableDronesCapability(request);
-        List<String> dateTimeDrones = getAvailableDronesDateTime();
-
-        // Keep only IDs that are in both lists
+        List<String> dateTimeDrones = getAvailableDronesDateTime(request);
+        System.out.println("Capability Drones: " + capabilityDrones);
+        System.out.println("DateTime Drones: " + dateTimeDrones);
         capabilityDrones.retainAll(dateTimeDrones);
 
         return capabilityDrones;
     }
+
     public List<String> getDroneFromPath(Attribute request) {
-        String url = ilpEndpoint + "/drones";
-        List<Map<String, Object>> drones = restTemplate.getForObject(url, List.class);
+        List<Drone> drones = getAllDrones();
         String attributeName = request.getAttribute();
-        String attributeOperator= request.getOperator();
+        String attributeOperator = request.getOperator();
         String attributeValue = request.getValue();
 
         return drones.stream()
                 .filter(drone -> {
-                    return checkMatchesAttributes(drone,attributeName,attributeValue,attributeOperator);
+                    return checkMatchesAttributes(drone, attributeName, attributeValue, attributeOperator);
                 })
                 // Map the matched drone to its ID as string
-                .map(d -> d.get("id").toString())
+                .map(Drone::getId)
                 .collect(Collectors.toList());
     }
-    public List<String> getDronesFromAttributes(AttributeRequest request){
-        String url = ilpEndpoint + "/drones";
-        List<Map<String, Object>> drones = restTemplate.getForObject(url, List.class);
-        List<Boolean> matchesList = new java.util.ArrayList<>();
+
+    public List<String> getDronesFromAttributes(AttributeRequest request) {
+        List<Drone> drones = getAllDrones();
+        List<Boolean> matchesList = new ArrayList<>();
 
         return drones.stream()
                 .filter(drone -> {
@@ -151,7 +158,7 @@ public class DroneService {
                     return checkForInvalid(matchesList);
 
                 })
-                .map(d -> d.get("id").toString())
+                .map(Drone::getId)
                 .collect(Collectors.toList());
     }
     /*public DeliveryPathResponse calcDeliveryPath(DeliveryPathRequest request) {
@@ -161,26 +168,39 @@ public class DroneService {
 
     //----------------------------------------Helper functions------------------------------------------------
 
-    //Helper function for date time availability
-    private boolean isDroneAvailableNow(DroneAvailability drone) {
-        DayOfWeek today = LocalDate.now().getDayOfWeek();
-        LocalTime now = LocalTime.now();
+    private boolean isDroneAvailable(DroneAvailability drone, MedDispatchRecord record) {
+        List<AvailableWindow> availability = drone.getAvailability();
 
-        return drone.getAvailability().stream().anyMatch(window -> {
-            DayOfWeek windowDay = DayOfWeek.valueOf(window.getDayOfWeek());
-            LocalTime from = LocalTime.parse(window.getFrom());
-            LocalTime until = LocalTime.parse(window.getUntil());
+        LocalDate date = record.getDate();
+        LocalTime time = record.getTime();
 
-            return windowDay == today &&
-                    (now.equals(from) || now.isAfter(from)) &&
-                    (now.equals(until) || now.isBefore(until));
+        return availability.stream().anyMatch(window -> {
+
+            String droneDay = window.getDayOfWeek();
+            LocalTime droneFrom = LocalTime.parse(window.getFrom());
+            LocalTime droneUntil = LocalTime.parse(window.getUntil());
+
+            if (date == null && time != null) {
+                return !time.isBefore(droneFrom) && !time.isAfter(droneUntil);
+            }
+            if (date != null && time == null) {
+                return droneDay.equalsIgnoreCase(date.getDayOfWeek().toString());
+            }
+            if (date == null && time == null) {
+                return true;
+            }
+
+            // Case 4: Both provided
+            return droneDay.equalsIgnoreCase(date.getDayOfWeek().toString())
+                    && !time.isBefore(droneFrom)
+                    && !time.isAfter(droneUntil);
         });
     }
 
     // Helper function for attribute matching
     private boolean matches(Object value, String target, String operator) {
         if (value instanceof Number) {
-            try{
+            try {
                 double numericTarget = Double.parseDouble(target);
                 double numericValue = ((Number) value).doubleValue();
                 return switch (operator) {
@@ -211,28 +231,41 @@ public class DroneService {
         return false;
     }
 
-    private boolean checkMatchesAttributes(Map<String, Object> drone, String attributeName, String targetValue, String operator) {
-        // Check top-level attribute
-        Object topLevelValue = drone.get(attributeName);
-        boolean matchFound = false;
-
-        if (topLevelValue != null) {
-            matchFound = matches(topLevelValue, targetValue, operator);
-        } else {
-            // Check capability attribute (nested map)
-            Object capabilityObj = drone.get("capability");
-            if (capabilityObj instanceof Map) {
-                Map<String, Object> capabilityMap = (Map<String, Object>) capabilityObj;
-                Object capValue = capabilityMap.get(attributeName);
-                if (capValue != null) {
-                    matchFound = matches(capValue, targetValue, operator);
-                }
-            }
+    private boolean checkMatchesAttributes(Drone drone, String attributeName, String targetValue, String operator) {
+        Object value = null;
+        if (Objects.equals(attributeName, "id")) {
+            value = drone.getId();
+        } else if (Objects.equals(attributeName, "name")) {
+            value = drone.getName();
+        } else if (Objects.equals(attributeName, "capacity")) {
+            value = drone.getCapability().getCapacity();
+        } else if (Objects.equals(attributeName, "cooling")) {
+            value = drone.getCapability().getCooling();
+        } else if (Objects.equals(attributeName, "heating")) {
+            value = drone.getCapability().getHeating();
+        } else if (Objects.equals(attributeName, "maxCost")) {
+            value = calculateMaxCost(drone);
         }
-        return matchFound;
+        return matches(value, targetValue, operator);
     }
 
-    private boolean checkForInvalid (List<Boolean> matchesList){
+    public double calculateMaxCost(Drone drone) {
+        Capability capability = drone.getCapability();
+        if (capability == null) {
+            throw new IllegalArgumentException("Drone capabilities not found");
+        }
+        return capability.getCostInitial()
+                + capability.getCostFinal()
+                + (capability.getCostPerMove() * (capability.getMaxMoves()));
+    }
+
+    public List<Region> getNoFlyZones() {
+        String url = ilpEndpoint + "/restricted-areas";
+        Region[] regions = restTemplate.getForObject(url, Region[].class);
+        return Arrays.asList(regions);
+    }
+
+    private boolean checkForInvalid(List<Boolean> matchesList) {
         for (Boolean match : matchesList) {
             if (!match) {
                 matchesList.clear();

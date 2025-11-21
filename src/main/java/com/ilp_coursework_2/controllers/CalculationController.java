@@ -4,7 +4,6 @@ import com.ilp_coursework_2.DTOs.*;
 import com.ilp_coursework_2.DTOs.Request.DistanceRequest;
 import com.ilp_coursework_2.DTOs.Request.NextPositionRequest;
 import com.ilp_coursework_2.DTOs.Request.RegionRequest;
-import com.ilp_coursework_2.DroneService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;

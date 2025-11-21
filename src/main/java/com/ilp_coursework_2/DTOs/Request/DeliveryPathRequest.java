@@ -1,6 +1,6 @@
 package com.ilp_coursework_2.DTOs.Request;
 
-import com.ilp_coursework_2.DTOs.Availability.MedDispatchRecord;
+import com.ilp_coursework_2.DTOs.MedDispatchRecord;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 

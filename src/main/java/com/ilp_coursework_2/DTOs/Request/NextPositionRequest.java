@@ -13,6 +13,12 @@ public class NextPositionRequest {
     @NotNull(message = "angle not found")
     private Double angle;
 
+    public NextPositionRequest() {}
+    public NextPositionRequest(Position start, Double angle) {
+        this.start = start;
+        this.angle = angle;
+    }
+
     // Getters and Setters
     public Position getStart() {
         return start;
