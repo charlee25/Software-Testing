@@ -85,7 +85,7 @@ public class CalcPath {
         if (mathAngle < 0) {
             mathAngle += 360; //Ensure angle is between 0 and 360
         }
-        double angle = (90 - mathAngle + 360) % 360; //Fiz angle cuz nextPosition is wrong
+        double angle = (90 - mathAngle + 360) % 360; //Fix angle cuz nextPosition is wrong
         double approxAngle = Math.round(angle / 22.5) * 22.5; //Approximate angle to nearest 22.5
         return approxAngle;
     }

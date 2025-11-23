@@ -10,7 +10,6 @@ import com.ilp_coursework_2.DTOs.Request.DistanceRequest;
 import com.ilp_coursework_2.DTOs.Request.NextPositionRequest;
 import com.ilp_coursework_2.DTOs.Response.DeliveryPathResponse;
 import com.ilp_coursework_2.Enums.CaseType;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -110,6 +109,57 @@ public class DroneService {
                 .map(Drone::getId)
                 .collect(Collectors.toList());
     }
+    public List<String> getAvailableDronesCapabilityOneFlight(List<MedDispatchRecord> records) {
+
+        List<Position> deliveryPositions = records.stream()
+                .map(MedDispatchRecord::getDelivery)
+                .toList();
+
+        // Total required capacity
+        double totalRequiredCapacity = records.stream()
+                .mapToDouble(r -> r.getRequirements().getCapacity())
+                .sum();
+
+        return getAllDrones().stream()
+                .filter(drone -> {
+
+                    Capability cap = drone.getCapability();
+                    if (cap == null) {
+                        return false;
+                    }
+
+                    double droneCapacity = cap.getCapacity();
+                    boolean droneCooling = cap.getCooling();
+                    boolean droneHeating = cap.getHeating();
+                    double droneMaxCost = calculateMaxCost(drone);
+                    int droneMaxMoves = cap.getMaxMoves();
+
+                    //must carry ALL deliveries at once
+                    if (droneCapacity < totalRequiredCapacity) {
+                        return false;
+                    }
+
+                    // must match ALL individual requirements
+                    boolean reqCompatible = records.stream().allMatch(rec -> {
+                        Requirements r = rec.getRequirements();
+                        boolean heatingOK = !r.getHeating() || droneHeating;
+                        boolean coolingOK = !r.getCooling() || droneCooling;
+                        boolean costOK = (r.getMaxCost() == null) || (droneMaxCost <= r.getMaxCost());
+                        return heatingOK && coolingOK && costOK;
+                    });
+
+                    if (!reqCompatible) return false;
+
+                    // 3) Move Check — must complete ENTIRE continuous route in one flight
+                    Position sp = getServicePointLocationForDrone(drone.getId());
+                    int requiredMoves = calcContinuousMinSteps(sp, deliveryPositions);
+
+                    return requiredMoves <= droneMaxMoves;
+                })
+                .map(Drone::getId)
+                .toList();
+    }
+
 
     public List<String> getAvailableDronesDateTime(List<MedDispatchRecord> records) {
         // Load all drones from all service points
@@ -138,7 +188,15 @@ public class DroneService {
         capabilityDrones.retainAll(dateTimeDrones);
         return capabilityDrones;
     }
+    public List<String> getAvailableDronesCombinedOneFLight(List<MedDispatchRecord> request) {
+        List<String> capabilityDrones = getAvailableDronesCapabilityOneFlight(request);
+        List<String> dateTimeDrones = getAvailableDronesDateTime(request);
 
+        return capabilityDrones.stream()
+                .filter(dateTimeDrones::contains)
+                .toList();
+
+    }
 
     public List<String> getDroneFromPath(Attribute request) {
         List<Drone> drones = getAllDrones();
@@ -179,12 +237,30 @@ public class DroneService {
         int totalMoves = 0;
         double totalCost = 0;
         List<DronePath> dronePaths = new ArrayList<>();
+        List<Delivery> deliveryList = new ArrayList<>();
+        Delivery delivery;
 
-        if (assignmentResult.getCaseType() == CaseType.MULTIPLE_FLIGHTS_ONE_DRONE){
+        if (assignmentResult.getCaseType() == CaseType.ONE_FLIGHT){
+            String droneId = assignmentResult.getAssignments().keySet().iterator().next();
+            List<MedDispatchRecord> assignedRecords = assignmentResult.getAssignments().get(droneId);
+            Position start = getServicePointLocationForDrone(droneId);
+            for (MedDispatchRecord record : assignedRecords) {
+                delivery = journeyToRecordFromRecord(start, record, totalMoves)._1();
+                totalMoves += journeyToRecord(droneId, record, totalMoves)._2();
+
+                deliveryList.add(delivery);
+                totalCost = calculateMaxCost(getDroneFromID(droneId));
+                start = record.getDelivery();
+            }
+            deliveryList.add(journeyReturnSP(-1, droneId, assignedRecords.getLast(), totalMoves)._1());
+            totalMoves += journeyReturnSP(-1, droneId, assignedRecords.getLast(), totalMoves)._2();
+            dronePaths = calcPath.makeDronePath(droneId, deliveryList);
+        }
+        else if (assignmentResult.getCaseType() == CaseType.MULTIPLE_FLIGHTS_ONE_DRONE){
             //Only one Drone
             String droneId = assignmentResult.getAssignments().keySet().iterator().next();
             List<MedDispatchRecord> assignedRecords = assignmentResult.getAssignments().get(droneId);
-            List<Delivery> deliveryList = getDeliveryList(assignedRecords, droneId)._1();
+            deliveryList = getDeliveryList(assignedRecords, droneId)._1();
 
             totalMoves += getDeliveryList(assignedRecords, droneId)._2();
             dronePaths = calcPath.makeDronePath(droneId, deliveryList);
@@ -195,7 +271,7 @@ public class DroneService {
             for (Map.Entry<String, List<MedDispatchRecord>> entry : assignmentResult.getAssignments().entrySet()) {
                 String droneId = entry.getKey();
                 List<MedDispatchRecord> assignedRecords = entry.getValue();
-                List<Delivery> deliveryList = getDeliveryList(assignedRecords, droneId)._1();
+                deliveryList = getDeliveryList(assignedRecords, droneId)._1();
 
                 totalMoves += getDeliveryList(assignedRecords, droneId)._2();
                 dronePaths = calcPath.makeDronePath(droneId, deliveryList);
@@ -205,11 +281,78 @@ public class DroneService {
         return calcPath.makeDeliveryPathResponse(totalCost, totalMoves, dronePaths);
     }
 
+    public Map<String, Object> calculateDeliveryPathAsGeoJson(List<MedDispatchRecord> records) {
+        Map<String, Object> feature = new HashMap<>();
+        feature.put("type", "Feature");
+
+        try {
+            DroneAssignmentResult result = assignDrones(records);
+
+            // Only handle ONE_FLIGHT case; otherwise return empty geometry
+            if (result.getCaseType() != CaseType.ONE_FLIGHT || result.getAssignments().isEmpty()) {
+                feature.put("geometry", null);
+                Map<String, Object> properties = new HashMap<>();
+                properties.put("message", "Cannot perform delivery in a single continuous flight");
+                feature.put("properties", properties);
+                return feature;
+            }
+
+            String droneId = result.getAssignments().keySet().iterator().next();
+
+            // Build continuous path
+            List<Position> route = buildContinuousRoute(records, droneId);
+
+            // Convert to GeoJSON coordinates
+            List<List<Double>> coords = route.stream()
+                    .map(p -> List.of(p.getLng(), p.getLat())) // GeoJSON = [lng, lat]
+                    .toList();
+
+            Map<String, Object> geometry = new HashMap<>();
+            geometry.put("type", "LineString");
+            geometry.put("coordinates", coords);
+
+            Map<String, Object> properties = new HashMap<>();
+            properties.put("droneId", droneId);
+            properties.put("totalMoves", coords.size());
+            properties.put("totalCost", calculateMaxCost(getDroneFromID(droneId)));
+
+            feature.put("geometry", geometry);
+            feature.put("properties", properties);
+
+        } catch (Exception e) {
+            // Catch any runtime exceptions and return empty geometry
+            feature.put("geometry", null);
+            Map<String, Object> properties = new HashMap<>();
+            properties.put("message", "Error calculating path: " + e.getMessage());
+            feature.put("properties", properties);
+        }
+
+        return feature;
+    }
+
     //----------------------------------------Helper functions------------------------------------------------
 
+    public List<Position> buildContinuousRoute(List<MedDispatchRecord> records, String droneId) {
+        Position sp = getServicePointLocationForDrone(droneId);
+
+        List<Position> fullRoute = new ArrayList<>();
+        Position current = sp;
+
+        for (MedDispatchRecord rec : records) {
+            List<Position> segment = calculatePath(current, rec.getDelivery());
+            fullRoute.addAll(segment);
+            current = rec.getDelivery();
+        }
+
+
+        // Return to SP
+        List<Position> back = calculatePath(current, sp);
+        fullRoute.addAll(back);
+
+        return fullRoute;
+    }
     private Tuple<List<Delivery>, Integer> getDeliveryList (List<MedDispatchRecord> assignedRecords, String droneId ){
         Delivery delivery;
-        int deliveryId;
         int returnId = -1;
         int totalMoves = 0;
         Position start;
@@ -219,27 +362,45 @@ public class DroneService {
 
         for (MedDispatchRecord record : assignedRecords) {
             //Journey from SP to drop off point
-            deliveryId = record.getId();
-            start = getServicePointLocationForDrone(droneId);
-            end = record.getDelivery();
-            System.out.println(end.getLat());
-            deliverPath = calculatePath(start, end);
-            totalMoves += deliverPath.size() - 1;
-
-            delivery = new Delivery(deliveryId, deliverPath);
+            delivery = journeyToRecord(droneId, record, totalMoves)._1();
+            totalMoves += journeyToRecord(droneId, record, totalMoves)._2();
             deliveryList.add(delivery);
 
             //Journey from drop off point to SP
-            deliveryId = returnId--;
-            start = deliverPath.getLast();
-            end = getServicePointLocationForDrone(droneId);
-            deliverPath = calculatePath(start, end);
-            totalMoves += deliverPath.size() - 1;
-
-            delivery = new Delivery(deliveryId, deliverPath);
+            delivery = journeyReturnSP(returnId, droneId, record, totalMoves)._1();
+            totalMoves += journeyReturnSP(returnId, droneId, record, totalMoves)._2();
             deliveryList.add(delivery);
         }
         return new Tuple<>(deliveryList, totalMoves);
+    }
+    private Tuple<Delivery, Integer> journeyToRecord(String droneId, MedDispatchRecord record, int totalMoves){
+        int deliveryId = record.getId();
+        Position start = getServicePointLocationForDrone(droneId);
+        Position end = record.getDelivery();
+        System.out.println(end.getLat());
+        List<Position> deliverPath = calculatePath(start, end);
+        totalMoves += deliverPath.size() - 1;
+
+        return new Tuple<>(new Delivery(deliveryId, deliverPath), totalMoves);
+    }
+    private Tuple<Delivery, Integer> journeyReturnSP(int deliveryId, String droneId, MedDispatchRecord record, int totalMoves){
+        deliveryId --;
+        Position start = record.getDelivery();
+        Position end = getServicePointLocationForDrone(droneId);
+        List<Position> deliverPath = calculatePath(start, end);
+        totalMoves += deliverPath.size() - 1;
+
+        return new Tuple<>(new Delivery(deliveryId, deliverPath), totalMoves);
+    }
+    private Tuple<Delivery, Integer> journeyToRecordFromRecord(Position lastPosition, MedDispatchRecord record, int totalMoves){
+        int deliveryId = record.getId();
+        Position start = lastPosition;
+        Position end = record.getDelivery();
+        System.out.println(end.getLat());
+        List<Position> deliverPath = calculatePath(start, end);
+        totalMoves += deliverPath.size() - 1;
+
+        return new Tuple<>(new Delivery(deliveryId, deliverPath), totalMoves);
     }
     private boolean isDroneAvailable(DroneAvailability drone, MedDispatchRecord record) {
         List<AvailableWindow> availability = drone.getAvailability();
@@ -270,9 +431,17 @@ public class DroneService {
         });
     }
     public DroneAssignmentResult assignDrones(List<MedDispatchRecord> records) {
-        //case 1 — One drone can do all records in multiple flights
+        List<String> singleFlight = getAvailableDronesCombinedOneFLight(records);
         List<String> multiFlight = getAvailableDronesCombined(records);
-        if (!multiFlight.isEmpty()) {
+
+        //case 1 — One drone can do all records in one flight
+        if(!singleFlight.isEmpty()) {
+            Map<String, List<MedDispatchRecord>> map = new HashMap<>();
+            map.put(singleFlight.getFirst(), records);
+            return new DroneAssignmentResult(CaseType.ONE_FLIGHT, map);
+        }
+        //case 2 — One drone can do all records in multiple flights
+        else if (!multiFlight.isEmpty()) {
             Map<String, List<MedDispatchRecord>> map = new HashMap<>();
             map.put(multiFlight.getFirst(), records);
             return new DroneAssignmentResult(CaseType.MULTIPLE_FLIGHTS_ONE_DRONE, map);
@@ -445,6 +614,21 @@ public class DroneService {
         int steps = 0;
         double distance = calculations.CalculateDistance(start, end);
         return (distance / stepDistance);
+    }
+    private int calcContinuousMinSteps(Position start, List<Position> deliveries) {
+        int total = 0;
+
+        Position current = start;
+
+        for (Position next : deliveries) {
+            total += calcMinSteps(current, next);
+            current = next;
+        }
+
+        // Final return to SP
+        total += calcMinSteps(current, start);
+
+        return total;
     }
     private boolean checkForInvalid(List<Boolean> matchesList) {
         for (Boolean match : matchesList) {

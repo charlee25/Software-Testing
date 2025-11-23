@@ -3,16 +3,14 @@ package com.ilp_coursework_2.controllers;
 import com.ilp_coursework_2.*;
 import com.ilp_coursework_2.DTOs.Attribute;
 import com.ilp_coursework_2.DTOs.Drone;
-import com.ilp_coursework_2.DTOs.Position;
 import com.ilp_coursework_2.DTOs.Request.AttributeRequest;
 import com.ilp_coursework_2.DTOs.MedDispatchRecord;
-import com.ilp_coursework_2.DTOs.Request.DistanceRequest;
 import com.ilp_coursework_2.DTOs.Response.DeliveryPathResponse;
-import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 public class ServiceController {
@@ -45,9 +43,8 @@ public class ServiceController {
     public DeliveryPathResponse calculateDeliveryPath(@RequestBody List<MedDispatchRecord> records) {
         return droneService.calcDeliveryPath(records);
     }
-
-    /*@PostMapping("/test")
-    public List<String> testEndpoint(@RequestBody List<MedDispatchRecord> records) {
-        return calcPath.getDronesForPath(records);
-    }*/
+    @PostMapping("api/v1/calcDeliveryPathAsGeoJson")
+    public Map<String, Object> calcDeliveryPathAsGeoJson(@RequestBody List<MedDispatchRecord> records) {
+        return droneService.calculateDeliveryPathAsGeoJson(records);
+    }
 }
