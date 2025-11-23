@@ -15,6 +15,12 @@ public class MedDispatchRecord {
     @Valid
     @NotNull(message = "Delivery co-ordinates not found")
     private Position delivery;
+    public MedDispatchRecord() {}
+    public MedDispatchRecord(Integer id, Requirements requirements, Position delivery) {
+        this.id = id;
+        this.requirements = requirements;
+        this.delivery = delivery;
+    }
 
 
     //Getters and setters
@@ -26,6 +32,6 @@ public class MedDispatchRecord {
     public void setTime(LocalTime time) {this.time = time;}
     public Requirements getRequirements() {return requirements;}
     public void setRequirements(Requirements requirements) {this.requirements = requirements;}
-    public Position getDeliveryPosition() {return delivery;}
-    public void setDeliveryPosition(Position deliveryPosition) {this.delivery = deliveryPosition;}
+    public Position getDelivery() {return delivery;}
+    public void setDelivery(Position delivery) {this.delivery = delivery;}
 }

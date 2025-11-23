@@ -3,8 +3,12 @@ package com.ilp_coursework_2.controllers;
 import com.ilp_coursework_2.*;
 import com.ilp_coursework_2.DTOs.Attribute;
 import com.ilp_coursework_2.DTOs.Drone;
+import com.ilp_coursework_2.DTOs.Position;
 import com.ilp_coursework_2.DTOs.Request.AttributeRequest;
 import com.ilp_coursework_2.DTOs.MedDispatchRecord;
+import com.ilp_coursework_2.DTOs.Request.DistanceRequest;
+import com.ilp_coursework_2.DTOs.Response.DeliveryPathResponse;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -37,9 +41,13 @@ public class ServiceController {
         AttributeRequest request = new AttributeRequest(attributes);
         return droneService.getDronesFromAttributes(request);
     }
-    /*@PostMapping("api/v1/calcDeliveryPath")
-    public List<String> calculateDeliveryPath(@RequestBody List<MedDispatchRecord> records) {
-        DeliveryPathRequest request = new DeliveryPathRequest(records);
-        return droneService.calculateDeliveryPath(request);
+    @PostMapping("api/v1/calcDeliveryPath")
+    public DeliveryPathResponse calculateDeliveryPath(@RequestBody List<MedDispatchRecord> records) {
+        return droneService.calcDeliveryPath(records);
+    }
+
+    /*@PostMapping("/test")
+    public List<String> testEndpoint(@RequestBody List<MedDispatchRecord> records) {
+        return calcPath.getDronesForPath(records);
     }*/
 }

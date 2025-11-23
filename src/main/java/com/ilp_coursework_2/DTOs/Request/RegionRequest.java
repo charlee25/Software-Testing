@@ -13,6 +13,11 @@ public class RegionRequest {
     @NotNull(message = "region not found")
     private Region region;
 
+    public RegionRequest() {}
+    public RegionRequest(Position position, Region region) {
+        this.position = position;
+        this.region = region;
+    }
     // Getters and Setters
     public Position getPosition() {return position;}
     public void setPosition(Position position) {this.position = position;}

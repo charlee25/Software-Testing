@@ -11,11 +11,11 @@ public class DronePath {
 
     @Valid
     @NotNull(message = "deliveries not found")
-    private List<Delivery> deliveryList;
+    private List<Delivery> deliveries;
 
     // Getters and Setters
     public String getDroneId() {return droneId;}
     public void setDroneId(String droneId) {this.droneId = droneId;}
-    public List<Delivery> getDeliveryList() {return deliveryList;}
-    public void setDeliveryList(List<Delivery> deliveryList) {this.deliveryList = deliveryList;}
+    public List<Delivery> getDeliveries() {return deliveries;}
+    public void setDeliveries(List<Delivery> deliveries) {this.deliveries = deliveries;}
 }

@@ -8,12 +8,18 @@ import java.util.List;
 public class Delivery {
     private @NotNull(message = "deliveryId not found") Integer deliveryId;
     @Valid
-    @NotNull(message = "positions not found")
-    private List<Position> positions;
+    @NotNull(message = "flightPath not found")
+    private List<Position> flightPath;
+
+    public Delivery() {}
+    public Delivery(Integer deliveryId, List<Position> flightPath) {
+        this.deliveryId = deliveryId;
+        this.flightPath = flightPath;
+    }
 
     // Getters and Setters
     public @NotNull(message = "deliveryId not found") Integer getDeliveryId() {return deliveryId;}
     public void setDeliveryId(@NotNull(message = "deliveryId not found") Integer deliveryId) {this.deliveryId = deliveryId;}
-    public List<Position> getPositions() {return positions;}
-    public void setPositions(List<Position> positions) {this.positions = positions;}
+    public List<Position> getFlightPath() {return flightPath;}
+    public void setFlightPath(List<Position> flightPath) {this.flightPath = flightPath;}
 }
