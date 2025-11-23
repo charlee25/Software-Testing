@@ -237,6 +237,7 @@ public class DroneService {
         int totalMoves = 0;
         double totalCost = 0;
         List<DronePath> dronePaths = new ArrayList<>();
+        List<DronePath> allDronePaths = new ArrayList<>();
         List<Delivery> deliveryList = new ArrayList<>();
         Delivery delivery;
 
@@ -271,12 +272,18 @@ public class DroneService {
             for (Map.Entry<String, List<MedDispatchRecord>> entry : assignmentResult.getAssignments().entrySet()) {
                 String droneId = entry.getKey();
                 List<MedDispatchRecord> assignedRecords = entry.getValue();
-                deliveryList = getDeliveryList(assignedRecords, droneId)._1();
 
-                totalMoves += getDeliveryList(assignedRecords, droneId)._2();
-                dronePaths = calcPath.makeDronePath(droneId, deliveryList);
-                totalCost = calculateMaxCost(getDroneFromID(droneId));
+                Tuple<List<Delivery>, Integer> result = getDeliveryList(assignedRecords, droneId);
+
+                deliveryList = result._1();
+                totalMoves += result._2();
+
+                List<DronePath> dp = calcPath.makeDronePath(droneId, deliveryList);
+                allDronePaths.addAll(dp);
+
+                totalCost += calculateMaxCost(getDroneFromID(droneId));
             }
+            return calcPath.makeDeliveryPathResponse(totalCost, totalMoves, allDronePaths);
         }
         return calcPath.makeDeliveryPathResponse(totalCost, totalMoves, dronePaths);
     }
