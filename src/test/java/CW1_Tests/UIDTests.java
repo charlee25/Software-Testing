@@ -1,12 +1,11 @@
-package com.ilp_coursework_2;
+package CW1_Tests;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class UIDTests {
@@ -19,7 +18,7 @@ class UIDTests {
     @Test
     void uid_output() {
         var response = restTemplate.getForEntity("http://localhost:" + port + "/api/v1/uid", String.class);
-        assertEquals("s2479712", response.getBody());
+        assertEquals("1234", response.getBody());
     }
     @Test
     void uid_code() {

@@ -1,25 +1,40 @@
 package com.ilp_coursework_2;
 
-import com.ilp_coursework_2.DTOs.*;
-import com.ilp_coursework_2.DTOs.Availability.AvailableWindow;
-import com.ilp_coursework_2.DTOs.Availability.DroneAvailability;
-import com.ilp_coursework_2.DTOs.Availability.ServicePoint;
-import com.ilp_coursework_2.DTOs.Request.AttributeRequest;
-import com.ilp_coursework_2.DTOs.MedDispatchRecord;
-import com.ilp_coursework_2.DTOs.Request.DistanceRequest;
-import com.ilp_coursework_2.DTOs.Request.NextPositionRequest;
-import com.ilp_coursework_2.DTOs.Response.DeliveryPathResponse;
-import com.ilp_coursework_2.Enums.CaseType;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import org.yaml.snakeyaml.util.Tuple;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.*;
-import java.util.stream.Collectors;
+import com.ilp_coursework_2.DTOs.Attribute;
+import com.ilp_coursework_2.DTOs.Availability.AvailableWindow;
+import com.ilp_coursework_2.DTOs.Availability.DroneAvailability;
+import com.ilp_coursework_2.DTOs.Availability.ServicePoint;
+import com.ilp_coursework_2.DTOs.Capability;
+import com.ilp_coursework_2.DTOs.Delivery;
+import com.ilp_coursework_2.DTOs.Drone;
+import com.ilp_coursework_2.DTOs.DroneAssignmentResult;
+import com.ilp_coursework_2.DTOs.DronePath;
+import com.ilp_coursework_2.DTOs.MedDispatchRecord;
+import com.ilp_coursework_2.DTOs.Position;
+import com.ilp_coursework_2.DTOs.Region;
+import com.ilp_coursework_2.DTOs.Request.AttributeRequest;
+import com.ilp_coursework_2.DTOs.Request.DistanceRequest;
+import com.ilp_coursework_2.DTOs.Request.NextPositionRequest;
+import com.ilp_coursework_2.DTOs.Requirements;
+import com.ilp_coursework_2.DTOs.Response.DeliveryPathResponse;
+import com.ilp_coursework_2.DTOs.ServicePointWithLocation;
+import com.ilp_coursework_2.Enums.CaseType;
 
 
 @Service

@@ -11,7 +11,7 @@ public class EndpointConfig {
         String endpoint = System.getenv("ILP_ENDPOINT");
 
         if (endpoint == null || endpoint.isEmpty()) {
-            endpoint = "https://ilp-rest-2025-bvh6e9hschfagrgy.ukwest-01.azurewebsites.net/";
+            endpoint = "http://localhost:8081/";
         }
 
         return endpoint;

@@ -1,20 +1,20 @@
 package com.ilp_coursework_2.controllers;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.ilp_coursework_2.CW1_Calculations;
-import com.ilp_coursework_2.DTOs.*;
 import com.ilp_coursework_2.DTOs.Request.DistanceRequest;
 import com.ilp_coursework_2.DTOs.Request.NextPositionRequest;
 import com.ilp_coursework_2.DTOs.Request.RegionRequest;
-import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
+import jakarta.validation.Valid;
 
 @RestController
 public class CalculationController {
@@ -22,7 +22,7 @@ public class CalculationController {
 
     //2) UID
     @GetMapping("/api/v1/uid")
-    public String getUid() {return "s2479712";}
+    public String getUid() {return "1234";}
 
     //3) distanceTo
     @PostMapping("/api/v1/distanceTo")

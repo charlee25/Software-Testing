@@ -1,7 +1,6 @@
-package com.ilp_coursework_2;
+package CW1_Tests;
 
-import com.ilp_coursework_2.DTOs.Request.DistanceRequest;
-import com.ilp_coursework_2.DTOs.Position;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -10,11 +9,12 @@ import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.web.servlet.MockMvc;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.ilp_coursework_2.DTOs.Position;
+import com.ilp_coursework_2.DTOs.Request.DistanceRequest;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
@@ -36,6 +36,18 @@ class DistanceToTests {
                 String.class);
         assertEquals("0.003616", response.getBody());
     }
+
+    @Test
+    void distanceTo_output_symmetric() {
+        DistanceRequest request = new DistanceRequest();
+        request.setPosition1(new Position(55.942617,  -3.192473));
+        request.setPosition2(new Position(55.946233,  -3.192473));
+        var response = restTemplate.postForEntity("http://localhost:" + port + "/api/v1/distanceTo",
+                request,
+                String.class);
+        assertEquals("0.003616", response.getBody());
+    }
+
     @Test
     void distanceTo_code_correct() {
         DistanceRequest request = new DistanceRequest();
@@ -48,6 +60,50 @@ class DistanceToTests {
     }
 
     @Test
+    void distanceTo_output_identical_pos() {
+        DistanceRequest request = new DistanceRequest();
+        request.setPosition1(new Position(55.946233,  -3.192473));
+        request.setPosition2(new Position(55.946233,  -3.192473));
+        var response = restTemplate.postForEntity("http://localhost:" + port + "/api/v1/distanceTo",
+                request,
+                String.class);
+        assertEquals(0.000000, Double.parseDouble(response.getBody()), 0.0000000001);
+    }
+
+    @Test
+    void distanceTo_output_lng_diff() {
+        DistanceRequest request = new DistanceRequest();
+        request.setPosition1(new Position(55.946233,  -3.192470));
+        request.setPosition2(new Position(55.946233,  -3.192475));
+        var response = restTemplate.postForEntity("http://localhost:" + port + "/api/v1/distanceTo",
+                request,
+                String.class);
+        assertEquals(0.000005, Double.parseDouble(response.getBody()), 0.0000000001);
+    }
+
+    @Test 
+    void distanceTo_output_lat_diff() {
+        DistanceRequest request = new DistanceRequest();
+        request.setPosition1(new Position(55.946230,  -3.192470));
+        request.setPosition2(new Position(55.946235,  -3.192470));
+        var response = restTemplate.postForEntity("http://localhost:" + port + "/api/v1/distanceTo",
+                request,
+                String.class);
+        assertEquals(0.000005, Double.parseDouble(response.getBody()), 0.0000000001);
+    }
+
+    @Test 
+    void distanceTo_output_neg_coords() {
+        DistanceRequest request = new DistanceRequest();
+        request.setPosition1(new Position(-55.946233,  -3.192473));
+        request.setPosition2(new Position(-55.942617,  -3.192475));
+        var response = restTemplate.postForEntity("http://localhost:" + port + "/api/v1/distanceTo",
+                request,
+                String.class);
+        assertEquals("0.003616", response.getBody());
+    }
+
+    @Test
     void distanceTo_code_missingPosition1() {
         DistanceRequest request = new DistanceRequest();
         request.setPosition2(new Position(55.942617,  -3.192473));
@@ -56,6 +112,7 @@ class DistanceToTests {
                 String.class);
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }
+
     @Test
     void distanceTo_code_missingPosition2() {
         DistanceRequest request = new DistanceRequest();
@@ -65,6 +122,29 @@ class DistanceToTests {
                 String.class);
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }
+
+    @Test
+    void distanceTo_code_nullPosition1() {
+        DistanceRequest request = new DistanceRequest();
+        request.setPosition1(new Position(null,  null));
+        request.setPosition2(new Position(55.942617,  -3.192473));
+        var response = restTemplate.postForEntity("http://localhost:" + port + "/api/v1/distanceTo",
+                request,
+                String.class);
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    }
+
+    @Test
+    void distanceTo_code_nullPosition2() {
+        DistanceRequest request = new DistanceRequest();
+        request.setPosition1(new Position(55.942617,  -3.192473));
+        request.setPosition2(new Position(null,  null));
+        var response = restTemplate.postForEntity("http://localhost:" + port + "/api/v1/distanceTo",
+                request,
+                String.class);
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    }
+
     @Test
     void distanceTo_code_nullLat() {
         DistanceRequest request = new DistanceRequest();
@@ -75,6 +155,7 @@ class DistanceToTests {
                 String.class);
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }
+
     @Test
     void distanceTo_code_nullLng() {
         DistanceRequest request = new DistanceRequest();
@@ -85,6 +166,7 @@ class DistanceToTests {
                 String.class);
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }
+
     @Test
     void distanceTo_code_nullRequest() {
         DistanceRequest request = new DistanceRequest();
@@ -93,6 +175,29 @@ class DistanceToTests {
                 String.class);
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }
+
+    @Test 
+    void distanceTo_output_rounding() {
+        DistanceRequest request = new DistanceRequest();
+        request.setPosition1(new Position(-55.946233,  -3.192473));
+        request.setPosition2(new Position(-55.946233,  -3.1924736));
+        var response = restTemplate.postForEntity("http://localhost:" + port + "/api/v1/distanceTo",
+                request,
+                String.class);
+        assertEquals(0.000001, Double.parseDouble(response.getBody()), 0.0000000001);
+    }
+
+    @Test 
+    void distanceTo_output_smallDistance() {
+        DistanceRequest request = new DistanceRequest();
+        request.setPosition1(new Position(-55.946233,  -3.192473));
+        request.setPosition2(new Position(-55.946233,  -3.1924734));
+        var response = restTemplate.postForEntity("http://localhost:" + port + "/api/v1/distanceTo",
+                request,
+                String.class);
+        assertEquals(0.000000, Double.parseDouble(response.getBody()), 0.0000000001);
+    }
+
     @Test
     void distanceTo_output_correctSyntax() throws Exception {
         String requestBody = """
@@ -111,8 +216,9 @@ class DistanceToTests {
         mockMvc.perform(post("/api/v1/distanceTo")
                         .contentType("application/json")
                         .content(requestBody))
-                        .andExpect(content().string("0.003616")); // Approximate distance in km
+                        .andExpect(content().string("0.003616")); 
     }
+
     @Test
     void distanceTo_code_correctSyntax() throws Exception {
         String requestBody = """
@@ -133,6 +239,7 @@ class DistanceToTests {
                         .content(requestBody))
                 .andExpect(status().isOk());
     }
+
     @Test
     void distanceTo_code_incorrectSyntax() throws Exception {
         String requestBody = """
