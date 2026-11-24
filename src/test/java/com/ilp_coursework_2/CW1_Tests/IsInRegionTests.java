@@ -1,4 +1,4 @@
-package CW1_Tests;
+package com.ilp_coursework_2.CW1_Tests;
 
 import java.util.ArrayList;
 import java.util.List;

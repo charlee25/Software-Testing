@@ -1,10 +1,10 @@
 package com.ilp_coursework_2.DTOs;
 
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
-
 import java.time.LocalDate;
 import java.time.LocalTime;
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 
 public class MedDispatchRecord {
     private @NotNull(message = "ID not found") Integer id;
@@ -15,6 +15,7 @@ public class MedDispatchRecord {
     @Valid
     @NotNull(message = "Delivery co-ordinates not found")
     private Position delivery;
+
     public MedDispatchRecord() {}
     public MedDispatchRecord(Integer id, Requirements requirements, Position delivery) {
         this.id = id;

@@ -1,4 +1,4 @@
-package CW1_Tests;
+package com.ilp_coursework_2.CW1_Tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.Test;
