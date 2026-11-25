@@ -55,10 +55,14 @@ class CalcPathTests {
         availability.setId("1");
         availability.setAvailability(List.of(window));
 
+        DroneAvailability availability2 = new DroneAvailability();
+        availability2.setId("2");
+        availability2.setAvailability(List.of(window));
+
         // Service point
         servicePoint = new ServicePoint();
         servicePoint.setServicePointId(1);
-        servicePoint.setDrones(List.of(availability));
+        servicePoint.setDrones(List.of(availability, availability2));
 
         // Service point location
         location = new ServicePointWithLocation();
@@ -68,11 +72,11 @@ class CalcPathTests {
 
 
     @Test
-    void deliveryPath_oneDroneOneFlight() {
+    void deliveryPath_oneDrone_oneRecord() {
 
-        drone = create_drone("1", 8.0);
+        drone = create_drone("1", 8.0, false, false);
 
-        MedDispatchRecord record = create_record(1, 1.0, 55.9443, -3.1880 );
+        MedDispatchRecord record = create_record(1, 1.0, 55.9443, -3.1880, false, false);
         records = List.of(record);
 
         when(restTemplate.getForObject(
@@ -107,20 +111,20 @@ class CalcPathTests {
                 () -> assertNotNull(response.getBody()),
                 () -> assertEquals("1", response.getBody() // Assigns drone 1
                         .getDronePaths().get(0).getDroneId()),
-                () -> assertEquals(1, response.getBody() // Returns 1 drone patth
-                        .getDronePaths().size()),
+                () -> assertEquals(2, response.getBody() // Returns 2 delivery flights; from and to service point
+                        .getDronePaths().get(0).getDeliveries().size()),
                 () -> assertEquals(1, response.getBody() // Returns delivery ID 1
                         .getDronePaths().get(0).getDeliveries().get(0).getDeliveryId())
         );
     }
 
     @Test
-    void deliveryPath_oneDrone_multipleFlights() {
+    void deliveryPath_oneDrone_multipleRecords_oneFlight() {
 
-        drone = create_drone("1", 8.0);
+        drone = create_drone("1", 8.0, false, false);
 
-        MedDispatchRecord record1 = create_record(1, 1.0, 55.9443, -3.1880 );
-        MedDispatchRecord record2 = create_record(2, 1.0, 55.9450, -3.1890 );
+        MedDispatchRecord record1 = create_record(1, 1.0, 55.9441, -3.1869, false, false);
+        MedDispatchRecord record2 = create_record(2, 1.0, 55.945, -3.1861, false, false);
         records = List.of(record1, record2);
 
         when(restTemplate.getForObject(
@@ -155,18 +159,169 @@ class CalcPathTests {
                 () -> assertNotNull(response.getBody()),
                 () -> assertEquals("1", response.getBody() // Assigns drone 1
                         .getDronePaths().get(0).getDroneId()),
-                () -> assertEquals(2, response.getBody() // Returns 2 drone paths
-                        .getDronePaths().size()),
+                () -> assertEquals(3, response.getBody() // 3 delivery entries in drone's path; from SP, to next delivery, back to SP
+                        .getDronePaths().get(0).getDeliveries().size()),
                 () -> assertEquals(1, response.getBody() // First delivery is ID 1
-                        .getDronePaths().get(0).getDeliveries().get(0).getDeliveryId())
+                        .getDronePaths().get(0).getDeliveries().get(0).getDeliveryId()),
+                () -> assertEquals(2, response.getBody() // Second delivery is ID 2
+                        .getDronePaths().get(0).getDeliveries().get(1).getDeliveryId())
         );
     }
 
-    private Drone create_drone(String id, Double capacity) {
+    @Test
+    void deliveryPath_oneDrone_multipleRecords_multipleFlights() {
+
+        drone = create_drone("1", 8.0, false, false);
+
+        MedDispatchRecord record1 = create_record(1, 6.0, 55.9428, -3.1842, false, false);
+        MedDispatchRecord record2 = create_record(2, 6.0, 55.9496, -3.1867, false, false);
+        records = List.of(record1, record2);
+
+        when(restTemplate.getForObject(
+                endsWith("/drones"),
+                eq(Drone[].class)
+        )).thenReturn(new Drone[]{drone});
+
+        when(restTemplate.getForObject(
+                endsWith("/drones-for-service-points"),
+                eq(ServicePoint[].class)
+        )).thenReturn(new ServicePoint[]{servicePoint});
+
+        when(restTemplate.getForObject(
+                endsWith("/service-points"),
+                eq(ServicePointWithLocation[].class)
+        )).thenReturn(new ServicePointWithLocation[]{location});
+
+        when(restTemplate.getForObject(
+                endsWith("/restricted-areas"),
+                eq(Region[].class)
+        )).thenReturn(new Region[]{});
+
+        
+        var response = testRestTemplate.postForEntity(
+                "/api/v1/calcDeliveryPath",
+                records,
+                DeliveryPathResponse.class
+        );
+
+        assertAll(
+                () -> assertEquals(HttpStatus.OK, response.getStatusCode()),
+                () -> assertNotNull(response.getBody()),
+                () -> assertEquals("1", response.getBody() // Assigns drone 1
+                        .getDronePaths().get(0).getDroneId()),
+                () -> assertEquals(4, response.getBody() // 4 delivery entries in drone's path; from SP, back to SP x2
+                        .getDronePaths().get(0).getDeliveries().size()),
+                () -> assertEquals(1, response.getBody() // First delivery is ID 1
+                        .getDronePaths().get(0).getDeliveries().get(0).getDeliveryId()),
+                () -> assertEquals(2, response.getBody() // Second delivery is ID 2
+                        .getDronePaths().get(0).getDeliveries().get(2).getDeliveryId())
+        );
+    }
+
+    @Test
+    void deliveryPath_multipleDrone_multipleRecords() {
+
+        Drone drone1 = create_drone("1", 6.0, true, false);
+        Drone drone2 = create_drone("2", 6.0, false, true);
+
+        MedDispatchRecord record1 = create_record(1, 3.0, 55.9428, -3.1842, true, false);
+        MedDispatchRecord record2 = create_record(2, 3.0, 55.9496, -3.1867, false, true);
+        records = List.of(record1, record2);
+
+        when(restTemplate.getForObject(
+                endsWith("/drones"),
+                eq(Drone[].class)
+        )).thenReturn(new Drone[]{drone1, drone2});
+
+        when(restTemplate.getForObject(
+                endsWith("/drones-for-service-points"),
+                eq(ServicePoint[].class)
+        )).thenReturn(new ServicePoint[]{servicePoint});
+
+        when(restTemplate.getForObject(
+                endsWith("/service-points"),
+                eq(ServicePointWithLocation[].class)
+        )).thenReturn(new ServicePointWithLocation[]{location});
+
+        when(restTemplate.getForObject(
+                endsWith("/restricted-areas"),
+                eq(Region[].class)
+        )).thenReturn(new Region[]{});
+
+        
+        var response = testRestTemplate.postForEntity(
+                "/api/v1/calcDeliveryPath",
+                records,
+                DeliveryPathResponse.class
+        );
+
+        assertAll(
+                () -> assertEquals(HttpStatus.OK, response.getStatusCode()),
+                () -> assertNotNull(response.getBody()),
+                () -> assertEquals(2, response.getBody() // 2 drone paths, 1 for each drone
+                        .getDronePaths().size()),
+                () -> assertEquals("1", response.getBody() // Assigns drone 1
+                        .getDronePaths().get(0).getDroneId()),
+                () -> assertEquals("2", response.getBody() // Assigns drone 2
+                        .getDronePaths().get(1).getDroneId()),
+                () -> assertEquals(1, response.getBody() // First delivery is ID 1
+                        .getDronePaths().get(0).getDeliveries().get(0).getDeliveryId()),
+                () -> assertEquals(2, response.getBody() // Second delivery is ID 2
+                        .getDronePaths().get(1).getDeliveries().get(0).getDeliveryId()),
+                () -> assertEquals(4, response.getBody() // 4 total delivery flights across both drones 
+                        .getDronePaths()
+                        .stream()
+                        .mapToInt(dronePath -> dronePath.getDeliveries().size())
+                        .sum())
+        );
+    }
+
+    @Test
+    void deliveryPath_droneAssignmentFailure() {
+
+        Drone drone1 = create_drone("1", 6.0, true, false);
+
+        // record 2 does not have a drone that can deliver it
+        MedDispatchRecord record1 = create_record(1, 3.0, 55.9428, -3.1842, true, false);
+        MedDispatchRecord record2 = create_record(2, 3.0, 55.9496, -3.1867, false, true);
+        records = List.of(record1, record2);
+
+        when(restTemplate.getForObject(
+                endsWith("/drones"),
+                eq(Drone[].class)
+        )).thenReturn(new Drone[]{drone1});
+
+        when(restTemplate.getForObject(
+                endsWith("/drones-for-service-points"),
+                eq(ServicePoint[].class)
+        )).thenReturn(new ServicePoint[]{servicePoint});
+
+        when(restTemplate.getForObject(
+                endsWith("/service-points"),
+                eq(ServicePointWithLocation[].class)
+        )).thenReturn(new ServicePointWithLocation[]{location});
+
+        when(restTemplate.getForObject(
+                endsWith("/restricted-areas"),
+                eq(Region[].class)
+        )).thenReturn(new Region[]{});
+
+        
+        var response = testRestTemplate.postForEntity(
+                "/api/v1/calcDeliveryPath",
+                records,
+                DeliveryPathResponse.class
+        );
+        
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+    }
+
+
+    private Drone create_drone(String id, Double capacity, boolean heating, boolean cooling) {
 
         Capability capability = new Capability();
-        capability.setCooling(false);
-        capability.setHeating(false);
+        capability.setCooling(cooling);
+        capability.setHeating(heating);
         capability.setCapacity(capacity);
         capability.setMaxMoves(1000);
         capability.setCostPerMove(0.02);
@@ -181,11 +336,12 @@ class CalcPathTests {
         return drone;
     }
 
-    private MedDispatchRecord create_record(int id, double capacity, double lat, double lng) {
+    private MedDispatchRecord create_record(int id, double capacity, double lat, double lng, boolean heating, boolean cooling) {
+
         Requirements requirements = new Requirements();
         requirements.setCapacity(capacity);
-        requirements.setCooling(false);
-        requirements.setHeating(false);
+        requirements.setCooling(cooling);
+        requirements.setHeating(heating);
         requirements.setMaxCost(100.0);
 
         Position deliveryPosition = new Position(lat, lng);
