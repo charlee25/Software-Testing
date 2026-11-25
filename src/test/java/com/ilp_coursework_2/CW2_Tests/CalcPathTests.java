@@ -68,6 +68,8 @@ class CalcPathTests {
         location = new ServicePointWithLocation();
         location.setId(1);
         location.setLocation(new Position(55.9440, -3.1880));
+
+        mockServiceData();
     }
 
 
@@ -83,22 +85,6 @@ class CalcPathTests {
                 endsWith("/drones"),
                 eq(Drone[].class)
         )).thenReturn(new Drone[]{drone});
-
-        when(restTemplate.getForObject(
-                endsWith("/drones-for-service-points"),
-                eq(ServicePoint[].class)
-        )).thenReturn(new ServicePoint[]{servicePoint});
-
-        when(restTemplate.getForObject(
-                endsWith("/service-points"),
-                eq(ServicePointWithLocation[].class)
-        )).thenReturn(new ServicePointWithLocation[]{location});
-
-        when(restTemplate.getForObject(
-                endsWith("/restricted-areas"),
-                eq(Region[].class)
-        )).thenReturn(new Region[]{});
-
         
         var response = testRestTemplate.postForEntity(
                 "/api/v1/calcDeliveryPath",
@@ -131,22 +117,6 @@ class CalcPathTests {
                 endsWith("/drones"),
                 eq(Drone[].class)
         )).thenReturn(new Drone[]{drone});
-
-        when(restTemplate.getForObject(
-                endsWith("/drones-for-service-points"),
-                eq(ServicePoint[].class)
-        )).thenReturn(new ServicePoint[]{servicePoint});
-
-        when(restTemplate.getForObject(
-                endsWith("/service-points"),
-                eq(ServicePointWithLocation[].class)
-        )).thenReturn(new ServicePointWithLocation[]{location});
-
-        when(restTemplate.getForObject(
-                endsWith("/restricted-areas"),
-                eq(Region[].class)
-        )).thenReturn(new Region[]{});
-
         
         var response = testRestTemplate.postForEntity(
                 "/api/v1/calcDeliveryPath",
@@ -181,22 +151,6 @@ class CalcPathTests {
                 endsWith("/drones"),
                 eq(Drone[].class)
         )).thenReturn(new Drone[]{drone});
-
-        when(restTemplate.getForObject(
-                endsWith("/drones-for-service-points"),
-                eq(ServicePoint[].class)
-        )).thenReturn(new ServicePoint[]{servicePoint});
-
-        when(restTemplate.getForObject(
-                endsWith("/service-points"),
-                eq(ServicePointWithLocation[].class)
-        )).thenReturn(new ServicePointWithLocation[]{location});
-
-        when(restTemplate.getForObject(
-                endsWith("/restricted-areas"),
-                eq(Region[].class)
-        )).thenReturn(new Region[]{});
-
         
         var response = testRestTemplate.postForEntity(
                 "/api/v1/calcDeliveryPath",
@@ -232,22 +186,6 @@ class CalcPathTests {
                 endsWith("/drones"),
                 eq(Drone[].class)
         )).thenReturn(new Drone[]{drone1, drone2});
-
-        when(restTemplate.getForObject(
-                endsWith("/drones-for-service-points"),
-                eq(ServicePoint[].class)
-        )).thenReturn(new ServicePoint[]{servicePoint});
-
-        when(restTemplate.getForObject(
-                endsWith("/service-points"),
-                eq(ServicePointWithLocation[].class)
-        )).thenReturn(new ServicePointWithLocation[]{location});
-
-        when(restTemplate.getForObject(
-                endsWith("/restricted-areas"),
-                eq(Region[].class)
-        )).thenReturn(new Region[]{});
-
         
         var response = testRestTemplate.postForEntity(
                 "/api/v1/calcDeliveryPath",
@@ -255,20 +193,29 @@ class CalcPathTests {
                 DeliveryPathResponse.class
         );
 
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+
+        var dronePaths = response.getBody().getDronePaths();
+
+        var drone1Path = dronePaths.stream()
+                .filter(path -> "1".equals(path.getDroneId()))
+                .findFirst()
+                .orElse(null);
+        var drone2Path = dronePaths.stream()
+                .filter(path -> "2".equals(path.getDroneId()))
+                .findFirst()
+                .orElse(null);
+
         assertAll(
-                () -> assertEquals(HttpStatus.OK, response.getStatusCode()),
-                () -> assertNotNull(response.getBody()),
-                () -> assertEquals(2, response.getBody() // 2 drone paths, 1 for each drone
-                        .getDronePaths().size()),
-                () -> assertEquals("1", response.getBody() // Assigns drone 1
-                        .getDronePaths().get(0).getDroneId()),
-                () -> assertEquals("2", response.getBody() // Assigns drone 2
-                        .getDronePaths().get(1).getDroneId()),
-                () -> assertEquals(1, response.getBody() // First delivery is ID 1
-                        .getDronePaths().get(0).getDeliveries().get(0).getDeliveryId()),
-                () -> assertEquals(2, response.getBody() // Second delivery is ID 2
-                        .getDronePaths().get(1).getDeliveries().get(0).getDeliveryId()),
-                () -> assertEquals(4, response.getBody() // 4 total delivery flights across both drones 
+                () -> assertNotNull(drone1Path),
+                () -> assertNotNull(drone2Path),
+                () -> assertEquals(2, dronePaths.size()),
+                () -> assertEquals(1, drone1Path.getDeliveries().get(0).getDeliveryId()),
+                () -> assertEquals(2, drone2Path.getDeliveries().get(0).getDeliveryId()),
+                
+                // 4 total delivery flights across both drones
+                () -> assertEquals(4, response.getBody()
                         .getDronePaths()
                         .stream()
                         .mapToInt(dronePath -> dronePath.getDeliveries().size())
@@ -290,22 +237,6 @@ class CalcPathTests {
                 endsWith("/drones"),
                 eq(Drone[].class)
         )).thenReturn(new Drone[]{drone1});
-
-        when(restTemplate.getForObject(
-                endsWith("/drones-for-service-points"),
-                eq(ServicePoint[].class)
-        )).thenReturn(new ServicePoint[]{servicePoint});
-
-        when(restTemplate.getForObject(
-                endsWith("/service-points"),
-                eq(ServicePointWithLocation[].class)
-        )).thenReturn(new ServicePointWithLocation[]{location});
-
-        when(restTemplate.getForObject(
-                endsWith("/restricted-areas"),
-                eq(Region[].class)
-        )).thenReturn(new Region[]{});
-
         
         var response = testRestTemplate.postForEntity(
                 "/api/v1/calcDeliveryPath",
@@ -350,4 +281,20 @@ class CalcPathTests {
         return record;
     }
 
+    private void mockServiceData() {
+        when(restTemplate.getForObject(
+                endsWith("/drones-for-service-points"),
+                eq(ServicePoint[].class)
+        )).thenReturn(new ServicePoint[]{servicePoint});
+
+        when(restTemplate.getForObject(
+                endsWith("/service-points"),
+                eq(ServicePointWithLocation[].class)
+        )).thenReturn(new ServicePointWithLocation[]{location});
+
+        when(restTemplate.getForObject(
+                endsWith("/restricted-areas"),
+                eq(Region[].class)
+        )).thenReturn(new Region[]{});
+    }
 }

@@ -446,7 +446,6 @@ public class DroneService {
                 return true;
             }
 
-            // Case 4: Both provided
             return droneDay.equalsIgnoreCase(date.getDayOfWeek().toString())
                     && !time.isBefore(droneFrom)
                     && !time.isAfter(droneUntil);
