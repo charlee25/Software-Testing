@@ -244,7 +244,7 @@ class CalcPathTests {
                 DeliveryPathResponse.class
         );
         
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 
 

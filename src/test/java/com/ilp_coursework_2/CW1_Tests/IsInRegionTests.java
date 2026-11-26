@@ -163,7 +163,7 @@ class IsInRegionTests {
 
     // Null region name - HTTP 400
     @Test
-    void isInRegion_code_regionName() {
+    void isInRegion_code_nullRegionName() {
         RegionRequest request = new RegionRequest();
         request.setPosition(new Position(1.222 ,  1.234));
         request.setRegion(new Region(null, positions));
@@ -199,7 +199,7 @@ class IsInRegionTests {
 
     // Null positions list - HTTP 400
     @Test
-    void isInRegion_code_positionsList() {
+    void isInRegion_code_nullPositionsList() {
         RegionRequest request = new RegionRequest();
         request.setPosition(new Position(1.222 ,  1.234));
         request.setRegion(new Region("Central", null));
